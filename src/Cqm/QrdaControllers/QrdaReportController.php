@@ -228,7 +228,7 @@ class QrdaReportController
 
         $directory = $GLOBALS['OE_SITE_DIR'] . DIRECTORY_SEPARATOR . 'documents' . DIRECTORY_SEPARATOR . 'cat3_reports';
         if (!is_dir($directory)) {
-            if (!mkdir($directory, 775, true) && !is_dir($directory)) {
+            if (!mkdir($directory, 0775, true) && !is_dir($directory)) {
                 throw new \RuntimeException(sprintf('Directory "%s" was not created', $directory));
             }
         }
@@ -236,8 +236,6 @@ class QrdaReportController
         if (is_array($pids)) {
             if (count($pids) === 1) {
                 $pids = $pids[0];
-            } else {
-                $pids = '';
             }
         }
         foreach ($measures as $measure) {
@@ -245,8 +243,8 @@ class QrdaReportController
                 $measure = $measure['measure_id'];
             }
             $xml = $this->getCategoryIIIReport($pids, $measure, $options);
-            $filename = $measure . "_all_patients.xml";
-            if (!empty($pids)) {
+            $filename = $measure . "_selected_patients.xml";
+            if (!empty($pids) && !is_array($pids)) {
                 $meta = sqlQuery("Select `fname`, `lname`, `pid` From `patient_data` Where `pid` = ?", [$pids]);
                 $filename = $measure . '_' . $pids . '_' . $meta['fname'] . '_' . $meta['lname'] . ".xml";
             }

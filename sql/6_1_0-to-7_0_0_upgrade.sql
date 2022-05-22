@@ -652,3 +652,26 @@ INSERT INTO `code_types` (`ct_key`, `ct_id`, `ct_seq`, `ct_mod`, `ct_just`, `ct_
     ('OID', (SELECT MAX(`id`) FROM `temp_table_one`), (SELECT MAX(`seq`) FROM `temp_table_one`), '0', '', '', '1', '1', '0', '1', '1', 'OID Valueset', '14', '1', '1', '1', '1', '1');
 DROP TABLE `temp_table_one`;
 #EndIf
+
+#IfNotRow2D list_options list_id issue_subtypes option_id diagnosis
+INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('issue_subtypes','diagnosis','Diagnosis',40);
+#EndIf
+
+#IfColumn patient_data deceased_date
+SET @currentSQLMode = (SELECT @@sql_mode);
+SET sql_mode = '';
+UPDATE `patient_data` SET `deceased_date` = NULL WHERE `deceased_date` = '0000-00-00 00:00:00';
+SET sql_mode = @currentSQLMode;
+#EndIf
+
+#IfMissingColumn insurance_companies cqm_sop
+ALTER TABLE `insurance_companies` ADD `cqm_sop` int DEFAULT NULL COMMENT 'HL7 Source of Payment for eCQMs';
+#EndIf
+
+#IfNotRow2D list_options list_id order_type option_id order
+INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('order_type','order','Order',90,0);
+#EndIf
+
+#IfNotColumnType procedure_type procedure_code varchar(64)
+ALTER TABLE `procedure_type` MODIFY `procedure_code` varchar(64) NOT NULL DEFAULT '' COMMENT 'code identifying this procedure',
+#EndIf

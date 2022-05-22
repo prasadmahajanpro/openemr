@@ -90,7 +90,7 @@ while ($type = sqlFetchArray($res)) {
                                         <div class="form-row">
                                             <div class="forms col-md-2">
                                                 <label for="code_<?php echo attr($key) + 1; ?>" class="h5"><?php echo xlt('Code'); ?>:</label>
-                                                <input type="text" id="code_<?php echo attr($key) + 1; ?>" name="code[]" class="form-control code" value="<?php echo attr($obj["code"]); ?>" onclick='sel_code(<?php echo js_url($GLOBALS['webroot']); ?>, this.parentElement.parentElement.parentElement.id);' />
+                                                <input type="text" id="code_<?php echo attr($key) + 1; ?>" name="code[]" class="form-control code" value="<?php echo attr($obj["code"]); ?>" onclick='sel_code(<?php echo attr_js($GLOBALS['webroot']); ?>, this.parentElement.parentElement.parentElement.id);' />
                                                 <span id="displaytext_<?php echo attr($key) + 1; ?>" class="displaytext help-block"></span>
                                                 <input type="hidden" id="description_<?php echo attr($key) + 1; ?>" name="description[]" class="description" value="<?php echo attr($obj["description"]); ?>" />
                                                 <input type="hidden" id="code_type_<?php echo attr($key) + 1; ?>" name="code_type[]" class="code_type" value="<?php echo attr($obj["code_type"]); ?>" />
@@ -154,7 +154,11 @@ while ($type = sqlFetchArray($res)) {
                                                 <label for="code_date_<?php echo attr($key) + 1; ?>" class="h5"><?php echo xlt('Date'); ?>:</label>
                                                 <input type='text' id="code_date_<?php echo attr($key) + 1; ?>" name='code_date[]' class="form-control code_date datepicker" value='<?php echo attr($obj["date"]); ?>' title='<?php echo xla('yyyy-mm-dd HH:MM Date of service'); ?>' />
                                             </div>
-                                            <div class=" forms col-md-2">
+                                            <div class="forms col-md-2">
+                                                <label for="code_date_end_<?php echo attr($key) + 1; ?>" class="h5"><?php echo xlt('End Date'); ?>:</label>
+                                                <input type='text' id="code_date_end_<?php echo attr($key) + 1; ?>" name='code_date_end[]' class="form-control code_date datepicker" value='<?php echo attr($obj["date_end"]); ?>' title='<?php echo xla('yyyy-mm-dd HH:MM End Date of service'); ?>' />
+                                            </div>
+                                            <div class="forms col-md-2">
                                                 <label for="comments_<?php echo attr($key) + 1; ?>" class="h5"><?php echo xlt('Comments'); ?>:</label>
                                                 <textarea name="comments[]" id="comments_<?php echo attr($key) + 1; ?>" class="form-control comments" rows="3"><?php echo text($obj["observation"]); ?></textarea>
                                             </div>
@@ -173,7 +177,7 @@ while ($type = sqlFetchArray($res)) {
                                     <div class="form-row">
                                         <div class="forms col-md-2">
                                             <label for="code_1" class="h5"><?php echo xlt('Code'); ?>:</label>
-                                            <input type="text" id="code_1" name="code[]" class="form-control code" value="<?php echo attr($obj["code"] ?? ''); ?>" onclick='sel_code(<?php echo js_url($GLOBALS['webroot']); ?>, this.parentElement.parentElement.parentElement.id);' />
+                                            <input type="text" id="code_1" name="code[]" class="form-control code" value="<?php echo attr($obj["code"] ?? ''); ?>" onclick='sel_code(<?php echo attr_js($GLOBALS['webroot']); ?>, this.parentElement.parentElement.parentElement.id);' />
                                             <span id="displaytext_1" class="displaytext help-block"></span>
                                             <input type="hidden" id="description_1" name="description[]" class="description" value="<?php echo attr($obj["description"] ?? ''); ?>" />
                                             <input type="hidden" id="code_type_1" name="code_type[]" class="code_type" value="<?php echo attr($obj["code_type"] ?? ''); ?>" />
@@ -185,7 +189,7 @@ while ($type = sqlFetchArray($res)) {
                                                 <option value=""><?php echo xlt('Select Type'); ?></option>
                                                 <?php foreach ($ob_types as $type) {
                                                     $selected = '';
-                                                    if ($obj["ob_type"] == $type['option_id']) {
+                                                    if ($obj["ob_type"] ?? null == $type['option_id']) {
                                                         $selected = 'selected';
                                                     }
                                                     ?>
@@ -196,10 +200,12 @@ while ($type = sqlFetchArray($res)) {
                                         <div class="forms col-md-1">
                                             <?php
                                             $style = 'display: block';
-                                            if ($obj["code"] == '21612-7' || $obj["code"] == '8661-1') {
-                                                $style = 'display: block;';
-                                            } elseif (!empty($obj["code"]) && $obj["code"] == 'SS003') {
-                                                $style = 'display: none;';
+                                            if (!empty($obj)) {
+                                                if ($obj["code"]  == '21612-7' || $obj["code"] == '8661-1') {
+                                                    $style = 'display: block;';
+                                                } elseif ($obj["code"] == 'SS003') {
+                                                    $style = 'display: none;';
+                                                }
                                             }
                                             ?>
                                             <label id="ob_value_head_1" class="ob_value_head h5"><?php echo xlt('Value'); ?>:</label>
@@ -214,10 +220,12 @@ while ($type = sqlFetchArray($res)) {
                                         <div class="forms col-md-1">
                                             <?php
                                             $style = 'display: block';
-                                            if ((!empty($obj["code"]) && ($obj["code"] == 'SS003') || $obj["code"] == '8661-1')) {
-                                                $style = 'display: none;';
-                                            } elseif (($obj["code"] == '21612-7')) {
-                                                $style = 'display: block';
+                                            if (!empty($obj)) {
+                                                if ((!empty($obj["code"]) && ($obj["code"] == 'SS003') || $obj["code"] == '8661-1')) {
+                                                    $style = 'display: none;';
+                                                } elseif (($obj["code"] == '21612-7')) {
+                                                    $style = 'display: block';
+                                                }
                                             }
                                             ?>
                                             <label id="ob_unit_head_1" class="ob_unit_head h5" style="<?php echo $style; ?>"><?php echo xlt('Units'); ?>:</label>
@@ -233,6 +241,10 @@ while ($type = sqlFetchArray($res)) {
                                         <div class="forms col-md-2">
                                             <label for="code_date_1" class="h5"><?php echo xlt('Date'); ?>:</label>
                                             <input type='text' id="code_date_1" name='code_date[]' class="form-control code_date datepicker" value='<?php echo attr($obj["date"] ?? ''); ?>' title='<?php echo xla('yyyy-mm-dd Date of service'); ?>' />
+                                        </div>
+                                        <div class="forms col-md-2">
+                                                <label for="code_date_end_<?php echo attr($key) + 1; ?>" class="h5"><?php echo xlt('End Date'); ?>:</label>
+                                                <input type='text' id="code_date_end_<?php echo attr($key) + 1; ?>" name='code_date_end[]' class="form-control code_date datepicker" value='<?php echo attr($obj["date_end"] ?? ''); ?>' title='<?php echo xla('yyyy-mm-dd HH:MM End Date of service'); ?>' />
                                         </div>
                                         <div class="forms col-md-2">
                                             <label for="comments_1" class="h5"><?php echo xlt('Comments'); ?>:</label>

@@ -21,6 +21,7 @@ use OpenEMR\Services\Qdm\MeasureService;
 use OpenEMR\Services\Qdm\QdmBuilder;
 use OpenEMR\Services\Qdm\QdmRequestAll;
 use OpenEMR\Services\Qdm\QdmRequestOne;
+use OpenEMR\Services\Qdm\QdmRequestSome;
 
 class QrdaReportService
 {
@@ -33,19 +34,22 @@ class QrdaReportService
 
     public function __construct()
     {
-        // first thing, start node service.
+        // first thing, ensure have a node service.
         $this->client = CqmServiceManager::makeCqmClient();
-        $this->client->start();
+        if (empty($this->client->getHealth()['uptime'] ?? null)) {
+            $this->client->start();
+            sleep(2); // give cpu a rest
+        }
+        if (empty($this->client->getHealth()['uptime'] ?? null)) {
+            $msg = xlt("Can not complete report request. Node Service is not running.");
+            throw new \RuntimeException($msg);
+        }
         $this->builder = new QdmBuilder();
         $this->calculator = new CqmCalculator();
         $this->measuresPath = MeasureService::fetchMeasuresPath();
         $this->patientJson = "";
         $this->effectiveDate = trim($GLOBALS['cqm_performance_period'] ?? '2022') . '-01-01 00:00:00';
         $this->effectiveDateEnd = trim($GLOBALS['cqm_performance_period'] ?? '2022') . '-12-31 23:59:59';
-        if (empty($this->client->getHealth()['uptime'] ?? null)) {
-            $msg = xlt("Can not complete report request. Node Service is not running.");
-            throw new \RuntimeException($msg);
-        }
     }
 
     /**
@@ -149,10 +153,12 @@ class QrdaReportService
      */
     public function generateCategoryIIIXml($pid, $measures): string
     {
-        if ($pid) {
-            $request = new QdmRequestOne($pid);
-        } else {
+        if (empty($pid)) {
             $request = new QdmRequestAll();
+        } elseif (is_array($pid)) {
+            $request = new QdmRequestSome($pid);
+        } else {
+            $request = new QdmRequestOne($pid);
         }
 
         if (!empty($this->client->getHealth()['uptime'] ?? null)) {

@@ -3075,6 +3075,7 @@ CREATE TABLE `insurance_companies` (
   `inactive` tinyint(1) NOT NULL DEFAULT '0',
   `eligibility_id` VARCHAR(32) default NULL,
   `x12_default_eligibility_id` INT(11) default NULL,
+  `cqm_sop` int DEFAULT NULL COMMENT 'HL7 Source of Payment for eCQMs',
   PRIMARY KEY  (`id`),
   UNIQUE KEY `uuid` (`uuid`)
 ) ENGINE=InnoDB;
@@ -4517,6 +4518,7 @@ INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES (
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('order_type','patient_characteristics','Patient Characteristics',60,0);
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('order_type','imaging','Imaging',70,0);
 INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('order_type','enc_checkup_procedure','Encounter Checkup Procedure',80,0);
+INSERT INTO list_options ( list_id, option_id, title, seq, is_default ) VALUES ('order_type','order','Order',90,0);
 
 --
 -- Clinical Rule Target Methods
@@ -4949,6 +4951,7 @@ INSERT INTO `list_options` (`list_id`, `option_id`, `title`) VALUES ('lists','is
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('issue_subtypes', 'eye', 'Eye',10);
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('issue_subtypes','assessment','Assessment',20);
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('issue_subtypes','concern','Concern',30);
+INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('issue_subtypes','diagnosis','Diagnosis',40);
 
 -- Insurance Types List
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('lists','insurance_types','Insurance Types',1);
@@ -9178,7 +9181,7 @@ CREATE TABLE `procedure_type` (
   `parent`              bigint(20)   NOT NULL DEFAULT 0  COMMENT 'references procedure_type.procedure_type_id',
   `name`                varchar(63)  NOT NULL DEFAULT '' COMMENT 'name for this category, procedure or result type',
   `lab_id`              bigint(20)   NOT NULL DEFAULT 0  COMMENT 'references procedure_providers.ppid, 0 means default to parent',
-  `procedure_code`      varchar(31)  NOT NULL DEFAULT '' COMMENT 'code identifying this procedure',
+  `procedure_code`      varchar(64)  NOT NULL DEFAULT '' COMMENT 'code identifying this procedure',
   `procedure_type`      varchar(31)  NOT NULL DEFAULT '' COMMENT 'see list proc_type',
   `body_site`           varchar(31)  NOT NULL DEFAULT '' COMMENT 'where to do injection, e.g. arm, buttock',
   `specimen`            varchar(31)  NOT NULL DEFAULT '' COMMENT 'blood, urine, saliva, etc.',
@@ -9423,7 +9426,7 @@ INSERT INTO code_types (ct_key, ct_id, ct_seq, ct_mod, ct_just, ct_fee, ct_rel, 
 INSERT INTO code_types (ct_key, ct_id, ct_seq, ct_mod, ct_just, ct_fee, ct_rel, ct_nofs, ct_diag, ct_active, ct_label, ct_external, ct_claim, ct_proc, ct_term, ct_problem ) VALUES ('PHIN Questions', 111, 111, 0, '', 0, 0, 1, 0, 1, 'PHIN Questions', 0, 0, 0, 0, 0);
 INSERT INTO code_types (ct_key, ct_id, ct_seq, ct_mod, ct_just, ct_fee, ct_rel, ct_nofs, ct_diag, ct_active, ct_label, ct_external, ct_claim, ct_proc, ct_term, ct_problem ) VALUES ('NCI-CONCEPT-ID', 112, 112, 0, '', 0, 0, 1, 0, 1, 'NCI CONCEPT ID', 0, 0, 0, 0, 0);
 INSERT INTO `code_types` (`ct_key`, `ct_id`, `ct_seq`, `ct_mod`, `ct_just`, `ct_mask`, `ct_fee`, `ct_rel`, `ct_nofs`, `ct_diag`, `ct_active`, `ct_label`, `ct_external`, `ct_claim`, `ct_proc`, `ct_term`, `ct_problem`, `ct_drug`) VALUES ('VALUESET', '113', '113', '0', '', '', '1', '1', '0', '1', '1', 'CQM Valueset', '13', '1', '1', '1', '1', '1');
-INSERT INTO `code_types` (`ct_key`, `ct_id`, `ct_seq`, `ct_mod`, `ct_just`, `ct_mask`, `ct_fee`, `ct_rel`, `ct_nofs`, `ct_diag`, `ct_active`, `ct_label`, `ct_external`, `ct_claim`, `ct_proc`, `ct_term`, `ct_problem`, `ct_drug`) VALUES ('VALUESET-OID', '114', '114', '0', '', '', '1', '1', '0', '1', '1', 'OID Valueset', '14', '1', '1', '1', '1', '1');
+INSERT INTO `code_types` (`ct_key`, `ct_id`, `ct_seq`, `ct_mod`, `ct_just`, `ct_mask`, `ct_fee`, `ct_rel`, `ct_nofs`, `ct_diag`, `ct_active`, `ct_label`, `ct_external`, `ct_claim`, `ct_proc`, `ct_term`, `ct_problem`, `ct_drug`) VALUES ('OID', '114', '114', '0', '', '', '1', '1', '0', '1', '1', 'OID Valueset', '14', '1', '1', '1', '1', '1');
 
 INSERT INTO list_options ( list_id, option_id, title, seq ) VALUES ('lists', 'code_types', 'Code Types', 1);
 

@@ -22,6 +22,7 @@ use Laminas\Config\Reader\Xml;
 use Laminas\Db\TableGateway\AbstractTableGateway;
 use OpenEMR\Services\Cda\CdaTemplateImportDispose;
 use OpenEMR\Services\Cda\CdaTemplateParse;
+use OpenEMR\Services\Cda\CdaValidateDocuments;
 use OpenEMR\Services\CodeTypesService;
 
 class CarecoordinationTable extends AbstractTableGateway
@@ -34,6 +35,7 @@ class CarecoordinationTable extends AbstractTableGateway
     private $parseTemplates;
     private $codeService;
     private $importService;
+    protected $validateDocument;
 
     public function __construct()
     {
@@ -42,6 +44,7 @@ class CarecoordinationTable extends AbstractTableGateway
         $this->parseTemplates = new CdaTemplateParse();
         $this->codeService = new CodeTypesService();
         $this->importService = new CdaTemplateImportDispose();
+        $this->validateDocument = new CdaValidateDocuments();
     }
 
     /*
@@ -109,10 +112,12 @@ class CarecoordinationTable extends AbstractTableGateway
                         d.couch_revid,
                         d.url AS file_url,
                         d.id AS document_id,
+                        d.document_data,
                         am.is_qrda_document,
                         ad.field_value as ad_lname,
                         ad1.field_value as ad_fname,
                         ad2.field_value as dob_raw,
+                        (Select field_value From `audit_details` Where audit_master_id = am.id AND table_name = 'patient_data' AND field_name = 'qrda_empty') as qrda_empty,
                         (Select COUNT(field_name) From `audit_details` Where audit_master_id = am.id AND table_name = 'encounter' AND field_name = 'date') as enc_count,
                         (Select COUNT(field_name) From `audit_details` Where audit_master_id = am.id AND table_name = 'lists1' AND field_name = 'type' AND field_value = 'medical_problem') as prb_count,
                         (Select COUNT(field_name) From `audit_details` Where audit_master_id = am.id AND table_name = 'form_care_plan' AND field_name = 'date') as cp_count,
@@ -171,7 +176,7 @@ class CarecoordinationTable extends AbstractTableGateway
      * @param   $document_id    Document id
      */
 
-    public function importCore($xml_content)
+    public function importCore($xml_content, $doc_id = null)
     {
         $xml_content_new = preg_replace('#<br />#', '', $xml_content);
         $xml_content_new = preg_replace('#<br/>#', '', $xml_content_new);
@@ -186,26 +191,29 @@ class CarecoordinationTable extends AbstractTableGateway
 
         // Document various sectional components
         $components = $xml['component']['structuredBody']['component'];
+        $qrda_log['message'] = $validation_log = null;
         // test if a QRDA QDM CAT I document type from header OIDs
         $qrda = $xml['templateId'][2]['root'] ?? null;
         if ($qrda === '2.16.840.1.113883.10.20.24.1.2') {
             $this->is_qrda_import = true;
+            $this->documentData['empty_qrda'] = 0;
+            if (!empty($doc_id)) {
+                $validation_log = $this->validateDocument->validateDocument((string)$xml_content_new, 'qrda1');
+            }
             if (count($components[2]["section"]["entry"] ?? []) < 2) {
                 $name = $xml["recordTarget"]["patientRole"]["patient"]["name"]["given"] . ' ' .
                     $xml["recordTarget"]["patientRole"]["patient"]["name"]["family"];
                 error_log("No QDMs for patient: " . $name);
-                return true;
+                $validation_log['xsd'][] = xl("QRDA is empty of content.") . ' ' . text($name);
+                $this->documentData['empty_qrda'] = 1;
             }
-            $valid = $this->parseTemplates->validateXmlXsd((string)$xml_content_new, 'qrda');
-            if ($valid) {
-                // Offset to Patient Data section
-                $this->documentData = $this->parseTemplates->parseQRDAPatientDataSection($components[2]);
-            }
+            // Offset to Patient Data section
+            $this->documentData = $this->parseTemplates->parseQRDAPatientDataSection($components[2]);
         } else {
-            $valid = $this->parseTemplates->validateXmlXsd((string)$xml_content_new, 'ccda');
-            if ($valid) {
-                $this->documentData = $this->parseTemplates->parseCDAEntryComponents($components);
+            if (!empty($doc_id)) {
+                $validation_log = $this->validateDocument->validateDocument((string)$xml_content_new, 'ccda');
             }
+            $this->documentData = $this->parseTemplates->parseCDAEntryComponents($components);
         }
 
         $this->documentData['approval_status'] = 1;
@@ -308,13 +316,16 @@ class CarecoordinationTable extends AbstractTableGateway
         // test if patient is deceased
         if ($this->is_qrda_import) {
             foreach ($components[2]["section"]["entry"] as $entry_search) {
-                if ($entry_search["observation"]["value"]["code"] == '419099009') {
+                if (($entry_search["observation"]["value"]["code"] ?? null) == '419099009') {
                     $deceased_date = $entry_search["observation"]["effectiveTime"]["low"]["value"];
                     $this->documentData['field_name_value_array']['patient_data'][1]['deceased_date'] = date('Y-m-d H:i:s', strtotime($deceased_date));
                     $this->documentData['field_name_value_array']['patient_data'][1]['deceased_reason'] = 'SNOMED-CT:419099009';
                     break;
                 }
             }
+        }
+        if (!empty($doc_id)) {
+            $this->validateDocument->saveValidationLog($doc_id, $validation_log);
         }
     }
 
@@ -712,7 +723,7 @@ class CarecoordinationTable extends AbstractTableGateway
                 $y++;
             } elseif ($table == 'care_plan') {
                 $arr_care_plan['care_plan'][$e]['extension'] = $newdata['care_plan']['extension'];
-                $arr_care_plan['care_plan'][$e]['negate'] = $newdata['care_plan']['negate'];
+                $arr_care_plan['care_plan'][$e]['negate'] = $newdata['care_plan']['negate'] ?? null;
                 $arr_care_plan['care_plan'][$e]['root'] = $newdata['care_plan']['root'];
                 $arr_care_plan['care_plan'][$e]['text'] = $newdata['care_plan']['code_text'];
                 $arr_care_plan['care_plan'][$e]['code'] = $newdata['care_plan']['code'];
@@ -909,10 +920,7 @@ class CarecoordinationTable extends AbstractTableGateway
     public function import($document_id)
     {
         $xml_content = $this->getDocument($document_id);
-        $error = $this->importCore($xml_content);
-        if ($error) {
-            return $error;
-        }
+        $this->importCore($xml_content, $document_id);
         $audit_master_approval_status = 1;
         $documentationOf = $this->documentData['field_name_value_array']['documentationOf'][1]['assignedPerson'];
         $audit_master_id = CommonPlugin::insert_ccr_into_audit_data($this->documentData, $this->is_qrda_import);
@@ -1910,7 +1918,7 @@ class CarecoordinationTable extends AbstractTableGateway
      */
     public function getCCDAComponents($type)
     {
-        $components = array();
+        $components = array('schematron' => 'Errors');
         $query = "select * from ccda_components where ccda_type = ?";
         $appTable = new ApplicationTable();
         $result = $appTable->zQuery($query, array($type));
